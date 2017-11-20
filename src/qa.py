@@ -21,21 +21,22 @@ dbName = 'railwayquestion'
 tableName = 'question'
 
 
+# 求一个向量的模长
 def calLen(vec):
     vec = np.mat(vec)
     num = (float)(vec * vec.T)
     return math.sqrt(num)
-
+# 对向量单位化
 def norm(vec):
     vec = np.mat(vec)
     return vec / calLen(vec)
-
+# 求余弦距离
 def cosSim(v1, v2):
     v1 = np.mat(v1)
     v2 = np.mat(v2)
     num = (float)(v1 * v2.T)
     return num
-
+# list转set
 def toSet(mlist):
     temp = set()
     for elem in mlist:
@@ -51,14 +52,11 @@ def loadWordBank(filePath):
     wordBank.remove( wordBank[-1] )
     return wordBank
 
-# 找答案
+# 给问题question匹配合适的答案
 def answer(question):
-    # print('\tstart...')
     t1 = time.time()
     # 分词
     question = jieba.lcut(question) # 分词
-    # print('\t[jieba]', time.time() - t1)
-    # t1 = time.time()
     i = 0
     # 把每个词都替换成对应的id，词库中没有则抛弃
     while i < len(question):
@@ -67,34 +65,27 @@ def answer(question):
             question[i] = wordBank.index( question[i] )
             i += 1
         else:
-            # # 词库中没有该词，抛弃
-            # question.remove( question[i] )
-            process = proc(question[i])
-            print('\t[process]', process)
-            if len(process) > 0:
-                question[i] = wordBank.index( process[0] )
+            # 词库中没有该词，替换可能的近义词
+            synonym = procSynonym(question[i])
+            print('\t[procSynonym]', synonym)
+            if len(synonym) > 0:
+                question[i] = wordBank.index( synonym[0] )
                 i += 1
             else:
                 question.remove( question[i] )
     # 将问题文本表示为向量
-    # print('\t[procWords]', time.time() - t1)
-    # t1 = time.time()
     words = list(toSet(question))
     words.sort()
-    # print('\t[wordSorted]', time.time() - t1)
-    # t1 = time.time()
     vector = [0 for ii in range(0, len(wordBank))]
     for word in words:
         vector[word] = question.count(word)
     if calLen(vector) > 0:
-        vector = norm(vector) # 新问题的向量
-    # print('\t[word2vec]', time.time() - t1)
-    # t1 = time.time()
-    # 计算余弦相似度
+        vector = norm(vector) # 问题文本的向量
+    # 计算 该问题向量 和 所有已知问题向量 的余弦相似度
     sims = []
     for doc in vectors:
         vec = doc[1]
-        sim = cosSim(vector, vec) # 计算余弦相似度
+        sim = cosSim(vector, vec) # 计算余弦距离
         sims.append(sim)
         # if sim > maxSim:
         #     maxSim = sim # 更新最近问题的余弦距离
@@ -108,45 +99,46 @@ def answer(question):
         maxIdx = sims.index( max(sims) ) # 当前最大值的索引
         sims[maxIdx] = 0 # 当前最大值归零，相当于删除该值
         indexs.append(maxIdx + 1) # 记录当前最大值的索引值 + 1，加1 是因为数据库中的id比这里的索引值大1
-    # print('\t[getIndexs]', time.time() - t1)
-    # t1 = time.time()
     print('MaxSimIndexs', indexs)
     if len(indexs) > 0:
         answers = getAnswers(indexs)
         for i in range(0, len(answers)):
             ans = answers[i]
-            ansJson = dict()
+            ansJson = dict() # 近义问题与答案的dict，方便后面转换为json格式
             ansJson['question'] = str(ans[0]).strip()
             ansJson['answer'] = str(ans[1]).strip()
             answers[i] = ansJson
-        ansJson = json.dumps(answers, ensure_ascii=False)
-        return ansJson
+        return json.dumps(answers, ensure_ascii=False) # 以json格式返回结果
     else:
-        return str(json.dumps([])) # 没有找到答案，返回空
+        # 没有找到答案，返回空
+        return str(json.dumps([]))
 
-# 从数据库中获取 特定id 的答案
+# 从数据库中获取 特定id 的问题-答案集
 def getAnswers(indexs):
-    # t1 = time.time()
     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
     cursor = db.cursor() # 建立游标
     answers = []
     sql = "select question, answer from question where id=%d;"
     for index in indexs:
-        # cursor.execute(sql + str(index) + ';') # 执行查询
         cursor.execute(sql % index) # 执行查询
         ans = cursor.fetchone()
         answers.append(ans)
-    cursor.close() # 关闭连接
+    # 关闭数据库连接
+    cursor.close()
     db.close()
-    # print('\t[getAnswers]', time.time() - t1)
     return answers
 
 # 读取向量
 # 参数 wordBankLen ，是词库的长度
 def loadVector(wordBankLen):
-    fr = codecs.open(VECTORS_FILE_PAYH, 'r', encoding='utf-8')
-    content = fr.read() # 读文件
-    fr.close()
+    try:
+        fr = codecs.open(VECTORS_FILE_PAYH, 'r', encoding='utf-8')
+        content = fr.read() # 读文件
+    except IOError:
+        print('[Error] 读取词库文件失败')
+        return []
+    else:
+        fr.close() # 关闭文件
     vectors = content.split(NEW_LINE) # 按行分割
     vectors.remove( vectors[-1] ) # 去掉末尾的空元素
     for i in range(0, len(vectors)):
@@ -184,8 +176,8 @@ def loadVector(wordBankLen):
 '''
 
 # 可能近义词处理
-def proc(word):
-    t1 = time.time()
+def procSynonym(word):
+    # t1 = time.time()
     word = list(word)
     words = []
     flag = False
@@ -197,7 +189,7 @@ def proc(word):
                 break
         if flag:
             break
-    print('\t[procWord]', time.time() - t1)
+    # print('\t[procWord]', time.time() - t1)
     return words
 
 # t1 = time.time()
