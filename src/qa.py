@@ -101,7 +101,7 @@ def answer(question):
         indexs.append(maxIdx + 1) # 记录当前最大值的索引值 + 1，加1 是因为数据库中的id比这里的索引值大1
     print('MaxSimIndexs', indexs)
     if len(indexs) > 0:
-        answers = getAnswers(indexs)
+        answers = getAnswersFromDB(indexs)
         for i in range(0, len(answers)):
             ans = answers[i]
             ansJson = dict() # 近义问题与答案的dict，方便后面转换为json格式
@@ -114,7 +114,7 @@ def answer(question):
         return str(json.dumps([]))
 
 # 从数据库中获取 特定id 的问题-答案集
-def getAnswers(indexs):
+def getAnswersFromDB(indexs):
     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
     cursor = db.cursor() # 建立游标
     answers = []
