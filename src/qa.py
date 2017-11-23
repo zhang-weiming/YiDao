@@ -8,6 +8,7 @@ import pymysql
 import platform
 import time
 import json
+import random
 
 NEW_LINE = '\n'
 if platform.system() == 'Windows':
@@ -29,7 +30,10 @@ def calLen(vec):
 # 对向量单位化
 def norm(vec):
     vec = np.mat(vec)
-    return vec / calLen(vec)
+    vecLen = calLen(vec)
+    if vecLen > 0:
+        vec = vec / vecLen
+    return vec
 # 求余弦距离
 def cosSim(v1, v2):
     v1 = np.mat(v1)
@@ -67,9 +71,9 @@ def answer(question):
         else:
             # 词库中没有该词，替换可能的近义词
             synonym = procSynonym(question[i])
-            print('\t[procSynonym]', synonym)
+            print('\t[procSynonym]',question[i], '->',  synonym)
             if len(synonym) > 0:
-                question[i] = wordBank.index( synonym[0] )
+                question[i] = wordBank.index( synonym[random.randint(0, len(synonym) - 1)] )
                 i += 1
             else:
                 question.remove( question[i] )
@@ -79,8 +83,8 @@ def answer(question):
     vector = [0 for ii in range(0, len(wordBank))]
     for word in words:
         vector[word] = question.count(word)
-    if calLen(vector) > 0:
-        vector = norm(vector) # 问题文本的向量
+    # if calLen(vector) > 0:
+    vector = norm(vector) # 问题文本的向量
     # 计算 该问题向量 和 所有已知问题向量 的余弦相似度
     sims = []
     for doc in vectors:
@@ -115,6 +119,7 @@ def answer(question):
 
 # 从数据库中获取 特定id 的问题-答案集
 def getAnswersFromDB(indexs):
+    # t1 = time.time()
     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
     cursor = db.cursor() # 建立游标
     answers = []
@@ -126,6 +131,7 @@ def getAnswersFromDB(indexs):
     # 关闭数据库连接
     cursor.close()
     db.close()
+    # print('\t[getAnswers]', time.time() - t1)
     return answers
 
 # 读取向量

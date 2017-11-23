@@ -10,14 +10,15 @@ import platform
 NEW_LINE = '\n'
 if platform.system() == 'Windows':
     NEW_LINE = '\r\n'
-WORD_BANK_FILE_PAYH = '../data/WordBank.txt'
-# jieba.add_word('不喜欢')
-# jieba.add_word('没有')
-# jieba.add_word('奔驰', tag='nz')
+WORD_BANK_FILE_PATH = '../data/WordBank.txt'
+STOP_WORD_FILE_PATH = '../data/stop_word_UTF_8.txt'
 user = 'root'
 password = 'keyan123'
 dbName = 'railwayquestion'
 tableName = 'question'
+
+stopWordList = []
+wordBank = []
 
 
 # def loadDocs(filePath, encoding='utf-8'):
@@ -55,33 +56,33 @@ def toSet(mlist):
 def loadDocs(encoding='utf-8'):
     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
     cursor = db.cursor() # 建立游标
-    sql = 'select id, vector, question from ' + tableName
+    sql = 'select id, question from ' + tableName
     cursor.execute(sql) # 执行查询
     textList = list()
     for row in cursor.fetchall():
-        textList.append( list(row) )
-    return textList
-
-# 分词
-def segment(textList):
-    for i in range(0, len(textList)):
-        textList[i][2] = jieba.lcut( textList[i][2] )
+        row = list(row)
+        row[1] = jieba.lcut(row[1])
+        textList.append( row )
     return textList
 
 # 建立词库
 def buildWordBank():
     textList = loadDocs()
-    textList = segment(textList)
     wordBank = set()
     for doc in textList: # 遍历每一个文档
-        for word in doc[2]: # 遍历一个文档中的每一个词语
+        for word in doc[1]: # 遍历一个文档中的每一个词语
             wordBank.add(word) # 加入set中
-    fw = codecs.open(WORD_BANK_FILE_PAYH, 'w', encoding='utf-8')
+    fw = codecs.open(WORD_BANK_FILE_PATH, 'w', encoding='utf-8')
     a = 1
+    b = 1
     for word in wordBank:
-        fw.write(word + NEW_LINE)
-        print('writting ', a)
-        a += 1
+        if word not in stopWordList:
+            fw.write(word + NEW_LINE)
+            print('writting ', a)
+            a += 1
+        else:
+            print(b, word)
+            b += 1
     fw.close()
     print('writting finished')
 
@@ -90,8 +91,8 @@ def buildWordBank():
     #     print('\t', doc)
 
 # 加载词库
-def loadWordBank(filePath):
-    fr = codecs.open(filePath, 'r', encoding='utf-8')
+def loadWordBank():
+    fr = codecs.open(WORD_BANK_FILE_PATH, 'r', encoding='utf-8')
     content = fr.read()
     fr.close()
     wordBank = content.split(NEW_LINE)
@@ -101,8 +102,6 @@ def loadWordBank(filePath):
 # 文本表示，词袋模型
 def myBow():
     textList = loadDocs()
-    textList = segment(textList)
-    wordBank = loadWordBank(WORD_BANK_FILE_PAYH) # 加载词库
     for i in range(0, len(textList)): # 遍历每一个文档
         doc = textList[i]
         j = 0
@@ -127,32 +126,32 @@ def myBow():
         # print('vectorLen', vectorLen, '\nvector', textList[i])
     return textList
 
-# 保存到数据库
-def save(textList):
-    db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
-    cursor = db.cursor() # 建立游标
-    a = 1
-    for doc in textList: # 遍历每一个文档
-        sql = "update question set vector='" + doc[1] + "' where id=" + str(doc[0]) + ";"
-        state = cursor.execute(sql) # 执行更新操作
-        print('update', a, 'state', state)
-        a += 1
-    db.commit() # 提交操作
-    cursor.close()
-    db.close()
+# # 保存到数据库
+# def save(textList):
+#     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
+#     cursor = db.cursor() # 建立游标
+#     a = 1
+#     for doc in textList: # 遍历每一个文档
+#         sql = "update question set vector='" + doc[1] + "' where id=" + str(doc[0]) + ";"
+#         state = cursor.execute(sql) # 执行更新操作
+#         print('update', a, 'state', state)
+#         a += 1
+#     db.commit() # 提交操作
+#     cursor.close()
+#     db.close()
     
-'''
 # 加载停用词
 def loadTYC():
-    f = codecs.open('../data/stop_word_UTF_8.txt', 'r', encoding='utf-8')
-    content = f.read()
-    f.close()
+    fr = codecs.open(STOP_WORD_FILE_PATH, 'r', encoding='utf-8')
+    content = fr.read()
+    fr.close()
     stop_word_list = content.split(NEW_LINE)
     stop_word_list.remove( stop_word_list[-1] )
     for i in range(0, len(stop_word_list)):
         stop_word_list[i] = stop_word_list[i].strip()
     return stop_word_list
 
+'''
 # 去停用词
 def quTYC(text_list, flag_list, stop_word_list):
     for i in range(0, len(text_list)):
@@ -171,10 +170,12 @@ def quTYC(text_list, flag_list, stop_word_list):
 
 # 入口
 if __name__ == '__main__':
+    wordBank = loadWordBank()
     # # 建立词库
+    # stopWordList = loadTYC()
     # buildWordBank()
 
-    # # 文本表示，并保存到数据库
-    # textList = myBow()
+    # 文本表示，并保存到数据库
+    textList = myBow()
     # save(textList)
     pass

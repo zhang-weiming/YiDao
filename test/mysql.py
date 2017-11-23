@@ -13,21 +13,21 @@ sql = "select question from question;"
 cursor.execute(sql)
 # db.commit()
 
-questions = cursor.fetchall()
-word = input('Input:')
-while word != 'EXIT':
-    for q in questions:
-        if word in q[0]:
-            print('Q:', q)
-    word = input('Input:')
+# questions = cursor.fetchall()
+# word = input('Input:')
+# while word != 'EXIT':
+#     for q in questions:
+#         if word in q[0]:
+#             print('Q:', q)
+#     word = input('Input:')
 
-# fw = codecs.open('qna.txt', 'w', encoding='utf-8')
-# a = 1
-# for row in cursor.fetchall():
-#     fw.write( str(row[0]).strip() + '|' + str(row[1]).strip() + NEW_LINE)
-#     print('writting', a)
-#     a += 1
-# fw.close()
+fw = codecs.open('qna.txt', 'w', encoding='utf-8')
+a = 1
+for row in cursor.fetchall():
+    fw.write( str(row[0]).strip() + NEW_LINE)
+    print('writting', a)
+    a += 1
+fw.close()
 
 cursor.close()
 db.close()
