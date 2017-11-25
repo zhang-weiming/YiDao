@@ -15,12 +15,16 @@ if platform.system() == 'Windows':
     NEW_LINE = '\r\n'
 WORD_BANK_FILE_PAYH = '../data/WordBank.txt'
 VECTORS_FILE_PAYH = '../data/vectors.txt'
+STOP_WORD_FILE_PATH = '../data/stop_word_UTF_8.txt'
 
 user = 'root'
 password = 'keyan123'
 dbName = 'railwayquestion'
 tableName = 'question'
 
+wordBank = []
+vectors = []
+stopWordList = []
 
 # 求一个向量的模长
 def calLen(vec):
@@ -56,6 +60,17 @@ def loadWordBank(filePath):
     wordBank.remove( wordBank[-1] )
     return wordBank
 
+# 加载停用词
+def loadTYC():
+    fr = codecs.open(STOP_WORD_FILE_PATH, 'r', encoding='utf-8')
+    content = fr.read()
+    fr.close()
+    stop_word_list = content.split(NEW_LINE)
+    stop_word_list.remove( stop_word_list[-1] )
+    for i in range(0, len(stop_word_list)):
+        stop_word_list[i] = stop_word_list[i].strip()
+    return stop_word_list
+
 # 给问题question匹配合适的答案
 def answer(question):
     t1 = time.time()
@@ -64,19 +79,22 @@ def answer(question):
     i = 0
     # 把每个词都替换成对应的id，词库中没有则抛弃
     while i < len(question):
-        if question[i] in wordBank:
-            # 把每个词都替换成对应的id
-            question[i] = wordBank.index( question[i] )
-            i += 1
+        if question[i] in stopWordList:
+            question.remove( question[i] )
         else:
-            # 词库中没有该词，替换可能的近义词
-            synonym = procSynonym(question[i])
-            print('\t[procSynonym]',question[i], '->',  synonym)
-            if len(synonym) > 0:
-                question[i] = wordBank.index( synonym[random.randint(0, len(synonym) - 1)] )
+            if question[i] in wordBank:
+                # 把每个词都替换成对应的id
+                question[i] = wordBank.index( question[i] )
                 i += 1
             else:
-                question.remove( question[i] )
+                # 词库中没有该词，替换可能的近义词
+                synonym = procSynonym(question[i])
+                print('\t[procSynonym]',question[i], '->',  synonym)
+                if len(synonym) > 0:
+                    question[i] = wordBank.index( synonym[random.randint(0, len(synonym) - 1)] )
+                    i += 1
+                else:
+                    question.remove( question[i] )
     # 将问题文本表示为向量
     words = list(toSet(question))
     words.sort()
@@ -136,7 +154,7 @@ def getAnswersFromDB(indexs):
 
 # 读取向量
 # 参数 wordBankLen ，是词库的长度
-def loadVector(wordBankLen):
+def loadVectors(wordBankLen):
     try:
         fr = codecs.open(VECTORS_FILE_PAYH, 'r', encoding='utf-8')
         content = fr.read() # 读文件
@@ -183,7 +201,6 @@ def loadVector(wordBankLen):
 
 # 可能近义词处理
 def procSynonym(word):
-    # t1 = time.time()
     word = list(word)
     words = []
     flag = False
@@ -195,16 +212,12 @@ def procSynonym(word):
                 break
         if flag:
             break
-    # print('\t[procWord]', time.time() - t1)
     return words
 
-# t1 = time.time()
 wordBank = loadWordBank(WORD_BANK_FILE_PAYH) # 加载词库
-# print('\t[word2vec]', time.time() - t1)
-# t1 = time.time()
-vectors = loadVector(len(wordBank)) # 加载已知问题的向量
-# print('\t[word2vec]', time.time() - t1)
-# t1 = time.time()
+vectors = loadVectors(len(wordBank)) # 加载已知问题的向量
+stopWordList = loadTYC() # 加载停用词
+jieba.lcut('test')
 
 # 入口
 if __name__ == '__main__':

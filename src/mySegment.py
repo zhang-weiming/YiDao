@@ -12,6 +12,8 @@ if platform.system() == 'Windows':
     NEW_LINE = '\r\n'
 WORD_BANK_FILE_PATH = '../data/WordBank.txt'
 STOP_WORD_FILE_PATH = '../data/stop_word_UTF_8.txt'
+DOCS_FILE_PATH = '../data/qna.txt'
+VECTORS_FILE_PATH = '../data/vectors.txt'
 user = 'root'
 password = 'keyan123'
 dbName = 'railwayquestion'
@@ -56,8 +58,8 @@ def toSet(mlist):
 def loadDocs(encoding='utf-8'):
     db = pymysql.connect("localhost", user, password, dbName, charset='utf8') # 连接数据库
     cursor = db.cursor() # 建立游标
-    sql = 'select id, question from ' + tableName
-    cursor.execute(sql) # 执行查询
+    sql = 'select id, question from %s;'
+    cursor.execute(sql % tableName) # 执行查询
     textList = list()
     for row in cursor.fetchall():
         row = list(row)
@@ -76,7 +78,7 @@ def buildWordBank():
     a = 1
     b = 1
     for word in wordBank:
-        if word not in stopWordList:
+        if word not in stopWordList: # 去掉停用词
             fw.write(word + NEW_LINE)
             print('writting ', a)
             a += 1
@@ -100,31 +102,44 @@ def loadWordBank():
     return wordBank
 
 # 文本表示，词袋模型
-def myBow():
-    textList = loadDocs()
-    for i in range(0, len(textList)): # 遍历每一个文档
-        doc = textList[i]
+def bow():
+    # textList = loadDocs()
+    fr = codecs.open(DOCS_FILE_PATH, 'r', 'utf-8')
+    content = fr.read()
+    fr.close()
+    textList = content.split(NEW_LINE)
+    textList.remove( textList[-1] )
+    fw = codecs.open(VECTORS_FILE_PATH, 'w', 'utf-8')
+    # for i in range(0, len(textList)): # 遍历每一个文档
+    id = 1
+    for doc in textList:
+        # doc = textList[i]
+        doc = jieba.lcut(doc) # 分词
         j = 0
-        while j < len(doc[2]):
-            if doc[2][j] in wordBank:
-                doc[2][j] = wordBank.index( doc[2][j] ) # 把每个词都替换成对应的id
-                j += 1
+        while j < len(doc):
+            if doc[j] in wordBank:
+                doc[j] = wordBank.index( doc[j] ) # 把每个词都替换成对应的id（词袋中的索引值）
+                j += 1 # 指针后移
             else:
-                doc[2].remove( doc[2][j] ) # 词库中没有该词，抛弃
-    for i in range(0, len(textList)): # 遍历每一个文档
-        doc = textList[i]
-        words = list(toSet(doc[2]))
+                doc.remove( doc[j] ) # 词库中没有该词，抛弃
+    # for i in range(0, len(textList)): # 遍历每一个文档
+        # doc = textList[i]
+        words = list(toSet(doc))
         words.sort()
         tempVector = '' # 向量字符串
         vectorLen = 0 # 向量的模
         for word in words: # 遍历一个文档中的所有词语，计算向量所有参数的平方和
-            vectorLen += math.pow(doc[2].count(word), 2)
+            vectorLen += math.pow(doc.count(word), 2)
         vectorLen = math.sqrt(vectorLen)
         for word in words: # 遍历一个文档中的所有词语，整理向量字符串
-            tempVector += str(word) + ':' + str( doc[2].count(word) / vectorLen ) + ' '
-        textList[i][1] = tempVector.strip() # 去掉字符串前后空格
+            tempVector += str(word) + ':' + str( doc.count(word) / vectorLen ) + ' '
+        # textList[i][1] = tempVector.strip() # 去掉字符串前后空格
+        fw.write('%d|%s' % (id, tempVector.strip()) + NEW_LINE)
+        print('writed', id)
+        id += 1
         # print('vectorLen', vectorLen, '\nvector', textList[i])
-    return textList
+    print('Done!')
+    # return textList
 
 # # 保存到数据库
 # def save(textList):
@@ -176,6 +191,6 @@ if __name__ == '__main__':
     # buildWordBank()
 
     # 文本表示，并保存到数据库
-    textList = myBow()
+    textList = bow()
     # save(textList)
     pass
