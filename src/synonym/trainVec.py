@@ -125,10 +125,10 @@ if __name__ == '__main__':
         a = 1
         for w in weight.keys():
             vec = weight[w].tolist()[0]
-            vecStr = ''
+            writtingStr = w + ' '
             for v in vec:
-                vecStr += str(v) + ' '
-            fw.write(w + '|' + vecStr.strip() + NEW_LINE)
+                writtingStr += str(v) + ' '
+            fw.write(writtingStr.strip() + NEW_LINE)
             print('finish', a)
             a += 1
         fw.close()

@@ -213,6 +213,9 @@ def procSynonym(word):
         if flag:
             break
     return words
+def loadWordVec():
+    pass
+
 
 wordBank = loadWordBank(WORD_BANK_FILE_PAYH) # 加载词库
 vectors = loadVectors(len(wordBank)) # 加载已知问题的向量
