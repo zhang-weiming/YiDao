@@ -1,5 +1,6 @@
 import pymysql
 import os
+import codecs
 
 DATA_DIR_PATH = '../../data/mysql/'
 
@@ -22,7 +23,11 @@ def close_db_conn(conn, cursor):
     conn.close()
 
 def get_question(conn, cursor):
-    sql = 
+    sql = 'select %s from %s;' % ('question', table_question)
+    cursor.execute(sql)
+    fw = codecs.open(DATA_DIR_PATH + 'questions.txt', 'w', 'utf-8')
+    for res in cursor.fetchall():
+        fw.write('')
 
 
 if __name__ == '__main__':
@@ -32,7 +37,8 @@ if __name__ == '__main__':
     # for res in cursor.fetchall():
     #     # print(res[0], res[1].strip())
     #     sql = 'update question set answer = "%s" where id = %d;' % (res[1].strip(), res[0])
-    #     print(sql)
+    #     # print(sql)
     #     cursor.execute(sql)
     # conn.commit()
+    # print('OK')
     close_db_conn(conn, cursor)
